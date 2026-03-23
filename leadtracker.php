@@ -408,8 +408,9 @@ public function hookActionCustomerAccountAdd($params)
         ));
         
         // Also send your Telegram notification here if enabled
-        // $this->sendTelegramNotification($mobile, $customer->email);
+         $this->sendTelegramNotification($mobile, $customer->email);
     }
+}
     public function hookDisplayHeader($params)
     {
         if (!Configuration::get('LEADTRACKER_ENABLED')) {
