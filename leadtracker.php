@@ -174,6 +174,8 @@ class LeadTracker extends Module
             'actionFrontControllerSetMedia',
             'actionCartSave',
             'displayOrderConfirmation',
+            'additionalCustomerFormFields', // Injects the field
+            'actionCustomerAccountAdd' ,     // Saves the data
         );
 
         foreach ($hooks as $hook) {
@@ -374,7 +376,40 @@ class LeadTracker extends Module
     /* ─────────────────────────────────────────
        HOOKS
     ───────────────────────────────────────── */
+   public function hookAdditionalCustomerFormFields($params)
+{
+    $label = $this->l('Mobile Number');
+    
+    $formField = (new FormField)
+        ->setName('mobile_lead')
+        ->setType('text')
+        ->setLabel($label)
+        ->setRequired(true); // Makes it mandatory for guests
 
+    return array($formField);
+}
+
+public function hookActionCustomerAccountAdd($params)
+{
+    $mobile = Tools::getValue('mobile_lead');
+    $customer = $params['new_customer'];
+
+    if ($mobile && $customer->id) {
+        // Save to your module's table to keep core tables clean
+        $db = Db::getInstance();
+        $db->insert('leads', array(
+            'mobile'            => pSQL($mobile),
+            'mobile_normalized' => pSQL(preg_replace('/[^0-9]/', '', $mobile)),
+            'source'            => 'checkout_registration',
+            'session_id'        => session_id(),
+            'ip_address'        => Tools::getRemoteAddr(),
+            'created_at'        => date('Y-m-d H:i:s'),
+            'updated_at'        => date('Y-m-d H:i:s'),
+        ));
+        
+        // Also send your Telegram notification here if enabled
+        // $this->sendTelegramNotification($mobile, $customer->email);
+    }
     public function hookDisplayHeader($params)
     {
         if (!Configuration::get('LEADTRACKER_ENABLED')) {
