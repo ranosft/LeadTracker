@@ -26,24 +26,24 @@ class AdminLeadTrackerController extends ModuleAdminController
 
         // Disable built-in list — we render our own template
         $this->list_no_link = true;
-
+        
         parent::__construct();
 
-        $this->meta_title = $this->l('Lead Tracker');
+        $this->meta_title = $this->module->l('Lead Tracker');
     }
 
     public function initPageHeaderToolbar()
     {
         $this->page_header_toolbar_btn['export_csv'] = array(
             'href'  => self::$currentIndex . '&action=exportCsv&token=' . $this->token,
-            'desc'  => $this->l('Export CSV'),
+            'desc'  => $this->module->l('Export CSV'),
             'icon'  => 'process-icon-export',
         );
 
         if (Tools::getValue('view_lead')) {
             $this->page_header_toolbar_btn['back'] = array(
                 'href'  => self::$currentIndex . '&token=' . $this->token,
-                'desc'  => $this->l('Back to Leads'),
+                'desc'  => $this->module->l('Back to Leads'),
                 'icon'  => 'process-icon-back',
             );
         }
@@ -72,7 +72,18 @@ class AdminLeadTrackerController extends ModuleAdminController
             );
             $this->content = $tpl->fetch();
         } else {
-            $this->context->smarty->assign($this->getLeadsData());
+            $data = $this->getLeadsData();
+            $this->context->smarty->assign($data);
+            $stats = $data['stats']; 
+
+            $stats_items = [
+                ['label' => 'Total Leads',   'value' => $stats['total_leads'],    'color' => '#1a237e'],
+                ['label' => 'Today',          'value' => $stats['today_leads'],    'color' => '#00695c'],
+                ['label' => 'Cart Events',   'value' => $stats['total_carts'],    'color' => '#e65100'],
+                ['label' => 'Checkouts',      'value' => $stats['total_checkouts'], 'color' => '#6a1b9a'],
+            ];
+            $this->context->smarty->assign('stats_items', $stats_items);
+
             $tpl = $this->context->smarty->createTemplate(
                 _PS_MODULE_DIR_ . 'leadtracker/views/templates/admin/leads.tpl',
                 $this->context->smarty
@@ -130,7 +141,7 @@ class AdminLeadTrackerController extends ModuleAdminController
                 'lead'       => null,
                 'activities' => array(),
                 'back_url'   => self::$currentIndex . '&token=' . $this->token,
-                'error'      => $this->l('Lead not found'),
+                'error'      => $this->module->l('Lead not found'),
             );
         }
 

@@ -26,6 +26,9 @@ class LeadTracker extends Module
         $this->bootstrap = true;
 
         parent::__construct();
+        $this->leadModel = new LeadTrackerLead();
+        $this->activityModel = new LeadTrackerActivity();
+        $this->leadTrackerTelegram = new LeadTrackerTelegram();
 
         $this->displayName = $this->l('Lead Tracker & Visitor Analytics');
         $this->description = $this->l('Capture leads, track visitor activity, and send real-time Telegram notifications.');
@@ -229,6 +232,10 @@ class LeadTracker extends Module
         if (Tools::isSubmit('submitLeadTrackerConfig')) {
             $output .= $this->postProcess();
         }
+        elseif (Tools::isSubmit('testTelegram')) {
+            // Catch the test button click
+            $output .= $this->testTelegramConnection();
+        }
 
         return $output . $this->renderConfigForm();
     }
@@ -262,7 +269,52 @@ class LeadTracker extends Module
 
         return $this->displayConfirmation($this->l('Settings saved successfully.'));
     }
+    private function testTelegramConnection()
+    {
+        $token = Configuration::get('LEADTRACKER_TELEGRAM_TOKEN');
+        $chatId = Configuration::get('LEADTRACKER_TELEGRAM_CHAT_ID');
 
+        if (empty($token) || empty($chatId)) {
+            return $this->displayError($this->l('Please save your Telegram Token and Chat ID first before testing.'));
+        }
+
+        $message = "🧪 *LeadTracker Test*\nIf you see this, your PrestaShop server can successfully talk to Telegram!";
+        $url = "https://api.telegram.org/bot{$token}/sendMessage";
+        
+        $data = array(
+            'chat_id'    => $chatId,
+            'text'       => $message,
+            'parse_mode' => 'Markdown'
+        );
+
+        // Make a raw cURL request to bypass any class errors and get exact API responses
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Prevent local SSL cert issues during dev
+        
+        $response = curl_exec($ch);
+        $curlError = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false) {
+            return $this->displayError($this->l('Server Network/cURL Error: ') . $curlError);
+        }
+
+        $responseData = json_decode($response, true);
+        
+        if ($httpCode == 200 && isset($responseData['ok']) && $responseData['ok'] === true) {
+            return $this->displayConfirmation($this->l('Success! Message sent to Telegram.'));
+        } else {
+            // This will print EXACTLY what Telegram is complaining about
+            $apiError = isset($responseData['description']) ? $responseData['description'] : $response;
+            return $this->displayError($this->l('Telegram API Error (HTTP ' . $httpCode . '): ') . $apiError);
+        }
+    }
     private function renderConfigForm()
     {
         // Build switch inputs with UNIQUE IDs per field (required by PS HelperForm)
@@ -307,6 +359,19 @@ class LeadTracker extends Module
                 'submit' => array(
                     'title' => $this->l('Save'),
                     'class' => 'btn btn-default pull-right',
+                ),
+                'buttons' => array(
+                    array(
+                        'href'  => $this->context->link->getAdminLink('AdminModules', false)
+                            . '&configure=' . $this->name
+                            . '&tab_module=' . $this->tab
+                            . '&module_name=' . $this->name
+                            . '&token=' . Tools::getAdminTokenLite('AdminModules')
+                            . '&testTelegram=1', // This triggers the check in getContent()
+                        'title' => $this->l('Test Telegram'),
+                        'icon'  => 'process-icon-envelope',
+                        'class' => 'pull-right'
+                    )
                 ),
             ),
         );
@@ -393,7 +458,7 @@ public function hookActionCustomerAccountAdd($params)
 {
     $mobile = Tools::getValue('mobile_lead');
     $customer = $params['new_customer'];
-
+    var_dump($mobile);
     if ($mobile && $customer->id) {
         // Save to your module's table to keep core tables clean
         $db = Db::getInstance();
@@ -408,7 +473,10 @@ public function hookActionCustomerAccountAdd($params)
         ));
         
         // Also send your Telegram notification here if enabled
-         $this->sendTelegramNotification($mobile, $customer->email);
+        var_dump( $this->leadTrackerTelegram->sendNewLead($mobile,
+            'page_url' . Tools::getHttpHost() . $_SERVER['REQUEST_URI']));
+            
+
     }
 }
     public function hookDisplayHeader($params)
@@ -419,12 +487,11 @@ public function hookActionCustomerAccountAdd($params)
 
         $customer       = $this->context->customer;
         $customerMobile = '';
-
-        if (isset($customer) && $customer->isLogged()) {
-            $customerMobile = !empty($customer->phone_mobile)
-                ? $customer->phone_mobile
-                : (string) $customer->phone;
-        }
+         $customerMobile = Db::getInstance()->getValue(
+    'SELECT mobile FROM '._DB_PREFIX_.'leads 
+     ORDER BY id_lead DESC'
+);
+       
 
         // Build AJAX url — use https if available
         $ajaxUrl = $this->context->link->getModuleLink('leadtracker', 'track', array(), true);

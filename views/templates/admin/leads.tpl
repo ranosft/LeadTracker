@@ -6,12 +6,7 @@
 
   {* Stats row *}
   <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding:16px 0 0;">
-    {foreach from=[
-      ['label'=>'Total Leads',   'value'=>$stats.total_leads,    'color'=>'#1a237e'],
-      ['label'=>'Today',         'value'=>$stats.today_leads,    'color'=>'#00695c'],
-      ['label'=>'Cart Events',   'value'=>$stats.total_carts,    'color'=>'#e65100'],
-      ['label'=>'Checkouts',     'value'=>$stats.total_checkouts,'color'=>'#6a1b9a'],
-    ] item=s}
+    {foreach from=foreach from=$stats_items item=s}
     <div style="flex:1;min-width:130px;background:#f8f8f8;border:1px solid #ddd;border-left:4px solid {$s.color};
                 border-radius:6px;padding:12px 14px;text-align:center;">
       <div style="font-size:22px;font-weight:700;color:{$s.color};">{$s.value}</div>

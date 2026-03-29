@@ -74,9 +74,8 @@ class LeadTrackerLead extends ObjectModel
         }
 
         $db  = Db::getInstance();
-        $row = $db->getRow(
-            'SELECT `id_lead` FROM `' . _DB_PREFIX_ . 'leads`
-             WHERE `mobile_normalized` = \'' . pSQL($normalized) . '\' LIMIT 1'
+       $row = $db->getRow(
+            "SELECT `id_lead` FROM `" . _DB_PREFIX_ . "leads` WHERE `mobile_normalized` = '" . pSQL($normalized) . "'"
         );
 
         if (!empty($row) && !empty($row['id_lead'])) {

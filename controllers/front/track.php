@@ -62,9 +62,9 @@ class LeadTrackerTrackModuleFrontController extends ModuleFrontController
         $ua        = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : '';
         $sessionId = session_id();
 
+        
         $existing = Db::getInstance()->getRow(
-            'SELECT `id_lead` FROM `' . _DB_PREFIX_ . 'leads`
-             WHERE `mobile_normalized` = \'' . pSQL($normalized) . '\' LIMIT 1'
+            "SELECT `id_lead` FROM `" . _DB_PREFIX_ . "leads` WHERE `mobile_normalized` = '" . pSQL($normalized) . "'"
         );
         $isNew = empty($existing);
 
